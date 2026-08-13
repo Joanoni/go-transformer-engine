@@ -159,3 +159,33 @@ func TestReshape_ZeroCopy(t *testing.T) {
 		t.Errorf("expected 5.0 at (1, 1), got %f", val)
 	}
 }
+
+func TestApply(t *testing.T) {
+	a, _ := tensor.New(2, 2)
+	_ = a.Set(1.0, 0, 0)
+	_ = a.Set(2.0, 0, 1)
+	_ = a.Set(3.0, 1, 0)
+	_ = a.Set(4.0, 1, 1)
+
+	// Double every element
+	out, err := tensor.Apply(a, func(x float64) float64 {
+		return x * 2.0
+	})
+	if err != nil {
+		t.Fatalf("unexpected error during Apply: %v", err)
+	}
+
+	expected := [][]float64{
+		{2.0, 4.0},
+		{6.0, 8.0},
+	}
+
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			val, _ := out.At(i, j)
+			if val != expected[i][j] {
+				t.Errorf("at (%d, %d): expected %f, got %f", i, j, expected[i][j], val)
+			}
+		}
+	}
+}

@@ -164,3 +164,39 @@ func Reshape(a *Tensor, newShape ...int) (*Tensor, error) {
 		data:    a.data, // Shared 1D slice (Zero-Copy)
 	}, nil
 }
+
+// Apply applies a custom scalar mapping function `fn` element-wise over the tensor.
+// It produces a new Tensor with the exact same shape, supporting arbitrary strided views.
+func Apply(a *Tensor, fn func(x float64) float64) (*Tensor, error) {
+	aShape := a.Shape()
+	out, err := New(aShape...)
+	if err != nil {
+		return nil, err
+	}
+
+	indices := make([]int, a.Rank())
+	var iterate func(dim int) error
+	iterate = func(dim int) error {
+		if dim == a.Rank() {
+			val, err := a.At(indices...)
+			if err != nil {
+				return fmt.Errorf("access error during Apply: %w", err)
+			}
+			return out.Set(fn(val), indices...)
+		}
+
+		for i := 0; i < aShape[dim]; i++ {
+			indices[dim] = i
+			if err := iterate(dim + 1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := iterate(0); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
