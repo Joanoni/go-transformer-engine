@@ -123,3 +123,10 @@ func TestTensor_OutOfBounds(t *testing.T) {
 		t.Error("expected error when axis 1 index is >= shape[1], got nil")
 	}
 }
+
+func TestTensor_Offset(t *testing.T) {
+	ts, _ := tensor.New(2, 2)
+	if ts.Offset() != 0 {
+		t.Errorf("expected initial offset 0, got %d", ts.Offset())
+	}
+}

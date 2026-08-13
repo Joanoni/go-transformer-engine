@@ -50,6 +50,74 @@ func TestAdd_ShapeMismatch(t *testing.T) {
 	}
 }
 
+func TestSub_ElementWise(t *testing.T) {
+	a, _ := tensor.New(2, 2)
+	b, _ := tensor.New(2, 2)
+
+	_ = a.Set(10.0, 0, 0)
+	_ = a.Set(20.0, 0, 1)
+	_ = a.Set(30.0, 1, 0)
+	_ = a.Set(40.0, 1, 1)
+
+	_ = b.Set(1.0, 0, 0)
+	_ = b.Set(2.0, 0, 1)
+	_ = b.Set(3.0, 1, 0)
+	_ = b.Set(4.0, 1, 1)
+
+	c, err := tensor.Sub(a, b)
+	if err != nil {
+		t.Fatalf("unexpected error during Sub: %v", err)
+	}
+
+	expected := [][]float64{
+		{9.0, 18.0},
+		{27.0, 36.0},
+	}
+
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			val, _ := c.At(i, j)
+			if val != expected[i][j] {
+				t.Errorf("at (%d, %d): expected %f, got %f", i, j, expected[i][j], val)
+			}
+		}
+	}
+}
+
+func TestMul_ElementWise(t *testing.T) {
+	a, _ := tensor.New(2, 2)
+	b, _ := tensor.New(2, 2)
+
+	_ = a.Set(2.0, 0, 0)
+	_ = a.Set(3.0, 0, 1)
+	_ = a.Set(4.0, 1, 0)
+	_ = a.Set(5.0, 1, 1)
+
+	_ = b.Set(10.0, 0, 0)
+	_ = b.Set(0.5, 0, 1)
+	_ = b.Set(2.0, 1, 0)
+	_ = b.Set(-1.0, 1, 1)
+
+	c, err := tensor.Mul(a, b)
+	if err != nil {
+		t.Fatalf("unexpected error during Mul: %v", err)
+	}
+
+	expected := [][]float64{
+		{20.0, 1.5},
+		{8.0, -5.0},
+	}
+
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			val, _ := c.At(i, j)
+			if val != expected[i][j] {
+				t.Errorf("at (%d, %d): expected %f, got %f", i, j, expected[i][j], val)
+			}
+		}
+	}
+}
+
 func TestMatMul_2D(t *testing.T) {
 	// A: Shape [2, 3]
 	// [1.0, 2.0, 3.0]

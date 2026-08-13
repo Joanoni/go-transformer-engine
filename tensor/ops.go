@@ -63,6 +63,106 @@ func Add(a, b *Tensor) (*Tensor, error) {
 	return out, nil
 }
 
+// Sub performs element-wise subtraction between two tensors A and B of identical shape.
+// Mathematical formulation:
+//
+//	C[i1, ..., in] = A[i1, ..., in] - B[i1, ..., in]
+func Sub(a, b *Tensor) (*Tensor, error) {
+	if a.Rank() != b.Rank() {
+		return nil, fmt.Errorf("%w: rank mismatch (%d vs %d)", ErrRankMismatch, a.Rank(), b.Rank())
+	}
+
+	aShape := a.Shape()
+	bShape := b.Shape()
+	for i := range aShape {
+		if aShape[i] != bShape[i] {
+			return nil, fmt.Errorf("%w: shape mismatch at axis %d (%d vs %d)", ErrShapeMismatch, i, aShape[i], bShape[i])
+		}
+	}
+
+	out, err := New(aShape...)
+	if err != nil {
+		return nil, err
+	}
+
+	indices := make([]int, a.Rank())
+	var iterate func(dim int) error
+	iterate = func(dim int) error {
+		if dim == a.Rank() {
+			valA, errA := a.At(indices...)
+			valB, errB := b.At(indices...)
+			if errA != nil || errB != nil {
+				return fmt.Errorf("access error during element-wise sub: %v / %v", errA, errB)
+			}
+			return out.Set(valA-valB, indices...)
+		}
+
+		for i := 0; i < aShape[dim]; i++ {
+			indices[dim] = i
+			if err := iterate(dim + 1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := iterate(0); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// Mul performs element-wise multiplication (Hadamard product) between two tensors A and B of identical shape.
+// Mathematical formulation:
+//
+//	C[i1, ..., in] = A[i1, ..., in] * B[i1, ..., in]
+func Mul(a, b *Tensor) (*Tensor, error) {
+	if a.Rank() != b.Rank() {
+		return nil, fmt.Errorf("%w: rank mismatch (%d vs %d)", ErrRankMismatch, a.Rank(), b.Rank())
+	}
+
+	aShape := a.Shape()
+	bShape := b.Shape()
+	for i := range aShape {
+		if aShape[i] != bShape[i] {
+			return nil, fmt.Errorf("%w: shape mismatch at axis %d (%d vs %d)", ErrShapeMismatch, i, aShape[i], bShape[i])
+		}
+	}
+
+	out, err := New(aShape...)
+	if err != nil {
+		return nil, err
+	}
+
+	indices := make([]int, a.Rank())
+	var iterate func(dim int) error
+	iterate = func(dim int) error {
+		if dim == a.Rank() {
+			valA, errA := a.At(indices...)
+			valB, errB := b.At(indices...)
+			if errA != nil || errB != nil {
+				return fmt.Errorf("access error during element-wise mul: %v / %v", errA, errB)
+			}
+			return out.Set(valA*valB, indices...)
+		}
+
+		for i := 0; i < aShape[dim]; i++ {
+			indices[dim] = i
+			if err := iterate(dim + 1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := iterate(0); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
 // MatMul performs 2D matrix multiplication between tensor A [M, K] and tensor B [K, N],
 // producing a result tensor C [M, N] where:
 //
