@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	"github.com/Joanoni/go-transformer-engine/autograd"
-	"github.com/Joanoni/go-transformer-engine/nn"
+	"github.com/Joanoni/go-transformer-engine/pkg/autograd"
+	"github.com/Joanoni/go-transformer-engine/pkg/nn"
 	"github.com/Joanoni/go-transformer-engine/pkg/tensor"
 )
 
