@@ -1,8 +1,8 @@
-name: Build & Test
+name: CI
 
 on:
   push:
-    branches: [ main, feature/* ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -10,13 +10,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
           go-version: '1.26.5'
+          cache: false # Desativa a busca do go.sum pois temos ZERO dependencias externas
 
-      - name: Run Tests
+      - name: Run Unit Tests
         run: go test -count=1 -v ./pkg/...
+
+      - name: Verify XOR Demo
+        run: go run ./examples/xor/main.go
