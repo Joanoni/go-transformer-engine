@@ -1,217 +1,198 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
-	"math/rand"
+	"math/rand/v2"
 
+	"github.com/Joanoni/go-transformer-engine/autograd"
 	"github.com/Joanoni/go-transformer-engine/nn"
-	"github.com/Joanoni/go-transformer-engine/tensor"
+	"github.com/Joanoni/go-transformer-engine/pkg/tensor"
 )
 
-// initRandomTensor creates a Tensor with the given shape populated with random float64 values in [-1.0, 1.0].
-func initRandomTensor(shape ...int) (*tensor.Tensor, error) {
-	ts, err := tensor.New(shape...)
+// initRandomWeights allocates a new tensor with the specified shape and fills it
+// with random values drawn uniform-randomly from [-1.0, 1.0].
+func initRandomWeights(shape ...int) (*tensor.Tensor, error) {
+	t, err := tensor.New(shape...)
 	if err != nil {
 		return nil, err
 	}
-
-	for i := 0; i < ts.Size(); i++ {
-		// Random float in [-1.0, 1.0]
-		val := rand.Float64()*2.0 - 1.0
-		ts.Data()[i] = val
+	data := t.Data()
+	for i := range data {
+		data[i] = (rand.Float64() * 2.0) - 1.0
 	}
-	return ts, nil
+	return t, nil
 }
 
-// addBias broadcasts a 1xN bias row vector across an MxN matrix.
-// Resulting shape: [M, N]
-func addBias(mat, bias *tensor.Tensor) (*tensor.Tensor, error) {
-	matShape := mat.Shape()
-	biasShape := bias.Shape()
-
-	if len(matShape) != 2 || len(biasShape) != 2 {
-		return nil, fmt.Errorf("addBias requires 2D matrices, got ranks %d and %d", len(matShape), len(biasShape))
-	}
-
-	m, n := matShape[0], matShape[1]
-	if biasShape[1] != n {
-		return nil, fmt.Errorf("bias dimension mismatch: matrix cols %d vs bias cols %d", n, biasShape[1])
-	}
-
-	out, err := tensor.New(m, n)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < m; i++ {
-		for j := 0; j < n; j++ {
-			matVal, _ := mat.At(i, j)
-			biasVal, _ := bias.At(0, j)
-			if err := out.Set(matVal+biasVal, i, j); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return out, nil
-}
-
-// sumRows sums gradient values across the batch dimension (axis 0) to produce a 1xN bias gradient.
-func sumRows(grad *tensor.Tensor) (*tensor.Tensor, error) {
-	shape := grad.Shape()
-	m, n := shape[0], shape[1]
-
-	out, err := tensor.New(1, n)
-	if err != nil {
-		return nil, err
-	}
-
-	for j := 0; j < n; j++ {
-		var colSum float64
-		for i := 0; i < m; i++ {
-			val, _ := grad.At(i, j)
-			colSum += val
-		}
-		if err := out.Set(colSum, 0, j); err != nil {
-			return nil, err
-		}
-	}
-	return out, nil
-}
-
-// updateWeights updates weight parameters using Stochastic Gradient Descent (SGD):
+// updateSGD applies standard Stochastic Gradient Descent weight updates:
 //
-//	W_new = W - lr * dW
-func updateWeights(param, grad *tensor.Tensor, lr float64) (*tensor.Tensor, error) {
-	scaledGrad, err := tensor.Apply(grad, func(g float64) float64 {
-		return g * lr
-	})
-	if err != nil {
-		return nil, err
+//	P = P - lr * dL/dP
+//
+// After updating parameters, the accumulated gradient is reset to nil.
+func updateSGD(p *tensor.Tensor, lr float64) {
+	if p == nil || p.Grad() == nil {
+		return
 	}
-	return tensor.Sub(param, scaledGrad)
+	pData := p.Data()
+	gData := p.Grad().Data()
+	for i := range pData {
+		pData[i] -= lr * gData[i]
+	}
+	p.SetGrad(nil)
 }
 
 func main() {
-	fmt.Println("==================================================================")
-	fmt.Println("  go-transformer-engine: XOR Multi-Layer Perceptron (2-2-1 MLP)   ")
-	fmt.Println("==================================================================")
+	fmt.Println("==========================================================================")
+	fmt.Println(" go-transformer-engine: XOR Problem Demo (Phase 3 - Autograd Engine)")
+	fmt.Println("==========================================================================")
 
-	// 1. Prepare XOR Dataset
-	// Inputs X: 4 samples, 2 features -> Shape [4, 2]
+	// XOR Inputs: 4 samples of 2 features
+	// [0, 0] -> 0
+	// [0, 1] -> 1
+	// [1, 0] -> 1
+	// [1, 1] -> 0
 	x, err := tensor.New(4, 2)
 	if err != nil {
-		log.Fatalf("failed to create input tensor: %v", err)
+		panic(err)
 	}
-	_ = x.Set(0.0, 0, 0)
-	_ = x.Set(0.0, 0, 1) // [0, 0]
-	_ = x.Set(0.0, 1, 0)
-	_ = x.Set(1.0, 1, 1) // [0, 1]
-	_ = x.Set(1.0, 2, 0)
-	_ = x.Set(0.0, 2, 1) // [1, 0]
-	_ = x.Set(1.0, 3, 0)
-	_ = x.Set(1.0, 3, 1) // [1, 1]
+	xData := []float64{
+		0, 0,
+		0, 1,
+		1, 0,
+		1, 1,
+	}
+	copy(x.Data(), xData)
 
-	// Targets Y: 4 samples, 1 label -> Shape [4, 1]
 	y, err := tensor.New(4, 1)
 	if err != nil {
-		log.Fatalf("failed to create target tensor: %v", err)
+		panic(err)
 	}
-	_ = y.Set(0.0, 0, 0) // XOR(0, 0) = 0
-	_ = y.Set(1.0, 1, 0) // XOR(0, 1) = 1
-	_ = y.Set(1.0, 2, 0) // XOR(1, 0) = 1
-	_ = y.Set(0.0, 3, 0) // XOR(1, 1) = 0
+	yData := []float64{
+		0,
+		1,
+		1,
+		0,
+	}
+	copy(y.Data(), yData)
 
-	// 2. Initialize Model Parameters (2-2-1 Topology)
-	// Hidden Layer 1: W1 [2, 2], b1 [1, 2]
-	w1, _ := initRandomTensor(2, 2)
-	b1, _ := tensor.New(1, 2)
+	// Initialize MLP 2-2-1 Parameters
+	w1, err := initRandomWeights(2, 2)
+	if err != nil {
+		panic(err)
+	}
+	w1.SetRequiresGrad(true)
 
-	// Output Layer 2: W2 [2, 1], b2 [1, 1]
-	w2, _ := initRandomTensor(2, 1)
-	b2, _ := tensor.New(1, 1)
+	b1, err := initRandomWeights(4, 2)
+	if err != nil {
+		panic(err)
+	}
+	b1.SetRequiresGrad(true)
 
-	epochs := 25000
-	learningRate := 0.5
+	w2, err := initRandomWeights(2, 1)
+	if err != nil {
+		panic(err)
+	}
+	w2.SetRequiresGrad(true)
 
-	fmt.Printf("\n[INFO] Starting training for %d epochs with Learning Rate = %.2f...\n\n", epochs, learningRate)
+	b2, err := initRandomWeights(4, 1)
+	if err != nil {
+		panic(err)
+	}
+	b2.SetRequiresGrad(true)
 
-	// 3. Training Loop
+	learningRate := 1.0
+	epochs := 20000
+
+	var initialLoss float64
+	var finalLoss float64
+
+	fmt.Printf("Training MLP (2-2-1) for %d epochs with Learning Rate = %.2f...\n\n", epochs, learningRate)
+
 	for epoch := 1; epoch <= epochs; epoch++ {
-		// --- FORWARD PASS ---
-		// Z1 = X * W1 + b1  -> Shape [4, 2]
-		xw1, _ := tensor.MatMul(x, w1)
-		z1, _ := addBias(xw1, b1)
-		a1, _ := nn.Sigmoid(z1) // Hidden activations [4, 2]
+		// 1. Create Tape Context for Forward Pass
+		ctx, tape := autograd.WithTape(context.Background())
 
-		// Z2 = A1 * W2 + b2 -> Shape [4, 1]
-		a1w2, _ := tensor.MatMul(a1, w2)
-		z2, _ := addBias(a1w2, b2)
-		yHat, _ := nn.Sigmoid(z2) // Predictions [4, 1]
-
-		// Compute Loss
-		lossVal, err := nn.MSE(yHat, y)
+		// 2. Forward Pass:
+		// H1 = Sigmoid(X * W1 + B1)
+		// Y_hat = Sigmoid(H1 * W2 + B2)
+		h1Mat, err := tensor.MatMul(ctx, x, w1)
 		if err != nil {
-			log.Fatalf("error computing loss: %v", err)
+			panic(err)
+		}
+		h1Add, err := tensor.Add(ctx, h1Mat, b1)
+		if err != nil {
+			panic(err)
+		}
+		a1, err := nn.Sigmoid(ctx, h1Add)
+		if err != nil {
+			panic(err)
 		}
 
-		if epoch == 1 || epoch%5000 == 0 || epoch == epochs {
-			fmt.Printf("Epoch %5d/%d | Loss (MSE): %.6f\n", epoch, epochs, lossVal)
+		h2Mat, err := tensor.MatMul(ctx, a1, w2)
+		if err != nil {
+			panic(err)
+		}
+		h2Add, err := tensor.Add(ctx, h2Mat, b2)
+		if err != nil {
+			panic(err)
+		}
+		yHat, err := nn.Sigmoid(ctx, h2Add)
+		if err != nil {
+			panic(err)
 		}
 
-		// --- BACKWARD PASS (Chain Rule) ---
-		// 1. Loss Gradient: dL/dyHat [4, 1]
-		dLdyHat, _ := nn.MSEGrad(yHat, y)
+		// 3. Compute Loss
+		loss, err := nn.MSE(ctx, yHat, y)
+		if err != nil {
+			panic(err)
+		}
 
-		// 2. Output Error: dZ2 = dL/dyHat * SigmoidPrime(yHat) [4, 1]
-		sigPrimeYHat, _ := nn.SigmoidPrime(yHat)
-		dZ2, _ := tensor.Mul(dLdyHat, sigPrimeYHat)
+		lossVal := loss.Data()[0]
+		if epoch == 1 {
+			initialLoss = lossVal
+		}
+		finalLoss = lossVal
 
-		// 3. Output Gradients: dW2 = A1^T * dZ2 [2, 1], db2 = sumRows(dZ2) [1, 1]
-		a1T, _ := tensor.Transpose(a1, 0, 1)
-		dW2, _ := tensor.MatMul(a1T, dZ2)
-		db2, _ := sumRows(dZ2)
+		// 4. Automatic Backward Pass via Autograd Tape
+		if err := tape.Backward(loss); err != nil {
+			panic(err)
+		}
 
-		// 4. Hidden Layer Error: dA1 = dZ2 * W2^T [4, 2]
-		w2T, _ := tensor.Transpose(w2, 0, 1)
-		dA1, _ := tensor.MatMul(dZ2, w2T)
+		// 5. Parameter Update (SGD Step)
+		updateSGD(w1, learningRate)
+		updateSGD(b1, learningRate)
+		updateSGD(w2, learningRate)
+		updateSGD(b2, learningRate)
 
-		// 5. Hidden Delta: dZ1 = dA1 * SigmoidPrime(A1) [4, 2]
-		sigPrimeA1, _ := nn.SigmoidPrime(a1)
-		dZ1, _ := tensor.Mul(dA1, sigPrimeA1)
+		// 6. Clear Tape for next iteration
+		tape.Clear()
 
-		// 6. Hidden Gradients: dW1 = X^T * dZ1 [2, 2], db1 = sumRows(dZ1) [1, 2]
-		xT, _ := tensor.Transpose(x, 0, 1)
-		dW1, _ := tensor.MatMul(xT, dZ1)
-		db1, _ := sumRows(dZ1)
-
-		// --- PARAMETER UPDATES (SGD) ---
-		w2, _ = updateWeights(w2, dW2, learningRate)
-		b2, _ = updateWeights(b2, db2, learningRate)
-		w1, _ = updateWeights(w1, dW1, learningRate)
-		b1, _ = updateWeights(b1, db1, learningRate)
+		if epoch%2000 == 0 || epoch == 1 {
+			fmt.Printf("Epoch %5d/%d | MSE Loss: %.6f\n", epoch, epochs, lossVal)
+		}
 	}
 
-	// 4. Evaluate Final Predictions
-	fmt.Println("\n==================================================================")
-	fmt.Println("  Final Evaluation Results (Truth Table Prediction)               ")
-	fmt.Println("==================================================================")
+	fmt.Println("\n--------------------------------------------------------------------------")
+	fmt.Printf("Initial MSE Loss: %.6f\n", initialLoss)
+	fmt.Printf("Final MSE Loss:   %.6f\n", finalLoss)
+	fmt.Println("--------------------------------------------------------------------------")
 
-	xw1, _ := tensor.MatMul(x, w1)
-	z1, _ := addBias(xw1, b1)
-	a1, _ := nn.Sigmoid(z1)
-	a1w2, _ := tensor.MatMul(a1, w2)
-	z2, _ := addBias(a1w2, b2)
-	yHat, _ := nn.Sigmoid(z2)
+	// Verify Predictions
+	ctx := context.Background()
+	h1Mat, _ := tensor.MatMul(ctx, x, w1)
+	h1Add, _ := tensor.Add(ctx, h1Mat, b1)
+	a1, _ := nn.Sigmoid(ctx, h1Add)
+	h2Mat, _ := tensor.MatMul(ctx, a1, w2)
+	h2Add, _ := tensor.Add(ctx, h2Mat, b2)
+	predictions, _ := nn.Sigmoid(ctx, h2Add)
 
+	fmt.Println("\nFinal XOR Predictions vs Ground Truth Targets:")
 	for i := 0; i < 4; i++ {
 		x0, _ := x.At(i, 0)
 		x1, _ := x.At(i, 1)
+		pred, _ := predictions.At(i, 0)
 		target, _ := y.At(i, 0)
-		pred, _ := yHat.At(i, 0)
-
-		fmt.Printf("Input: [%d, %d] | Expected: %.1f | Predicted: %.4f | Rounded: %d\n",
-			int(x0), int(x1), target, pred, int(pred+0.5))
+		fmt.Printf("Input: [%.0f, %.0f] | Target: %.0f | Prediction: %.4f\n", x0, x1, target, pred)
 	}
-	fmt.Println("==================================================================")
+	fmt.Println("==========================================================================")
 }

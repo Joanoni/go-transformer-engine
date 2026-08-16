@@ -1,0 +1,28 @@
+#!/bin/sh
+# Git pre-commit hook for go-transformer-engine
+# Formats code, executes tests, and synchronizes README.md before committing.
+
+echo "Running pre-commit verification and README synchronization..."
+
+# 1. Format Go code
+go fmt ./...
+
+# 2. Synchronize README code snippets and execution output
+go run ./scripts/sync_readme.go
+if [ $? -ne 0 ]; then
+    echo "Error: README synchronization failed. Aborting commit."
+    exit 1
+fi
+
+# 3. Stage updated README.md if modified by sync script
+git add README.md
+
+# 4. Run unit tests
+go test -count=1 ./...
+if [ $? -ne 0 ]; then
+    echo "Error: Unit tests failed. Aborting commit."
+    exit 1
+fi
+
+echo "Pre-commit checks passed successfully!"
+exit 0
