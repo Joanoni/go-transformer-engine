@@ -17,20 +17,12 @@ Developed from **First Principles**, this project eliminates external heavy mach
 go-transformer-engine/
 ├── LICENSE
 ├── README.md
-├── autograd/
-│   ├── tape.go
-│   └── tape_test.go
 ├── examples/
 │   ├── quickstart/
 │   │   └── main.go
 │   └── xor/
 │       └── main.go
 ├── go.mod
-├── nn/
-│   ├── activation.go
-│   ├── activation_test.go
-│   ├── loss.go
-│   └── loss_test.go
 ├── pkg/
 │   ├── autograd/
 │   │   ├── tape.go
@@ -45,13 +37,10 @@ go-transformer-engine/
 │       ├── ops_test.go
 │       ├── tensor.go
 │       └── tensor_test.go
-├── scripts/
-│   ├── hooks/
-│   │   └── pre-commit
-│   └── sync_readme.go
-└── tensor/
-    ├── ops_test.go
-    └── tensor_test.go
+└── scripts/
+    ├── hooks/
+    │   └── pre-commit
+    └── sync_readme.go
 ```
 <!-- END_PROJECT_TREE -->
 
@@ -160,28 +149,28 @@ go run ./examples/xor/main.go
 ==========================================================================
 Training MLP (2-2-1) for 20000 epochs with Learning Rate = 1.00...
 
-Epoch     1/20000 | MSE Loss: 0.319624
-Epoch  2000/20000 | MSE Loss: 0.000541
-Epoch  4000/20000 | MSE Loss: 0.000262
-Epoch  6000/20000 | MSE Loss: 0.000172
-Epoch  8000/20000 | MSE Loss: 0.000128
-Epoch 10000/20000 | MSE Loss: 0.000102
-Epoch 12000/20000 | MSE Loss: 0.000084
-Epoch 14000/20000 | MSE Loss: 0.000072
-Epoch 16000/20000 | MSE Loss: 0.000063
-Epoch 18000/20000 | MSE Loss: 0.000056
-Epoch 20000/20000 | MSE Loss: 0.000050
+Epoch     1/20000 | MSE Loss: 0.245889
+Epoch  2000/20000 | MSE Loss: 0.000520
+Epoch  4000/20000 | MSE Loss: 0.000249
+Epoch  6000/20000 | MSE Loss: 0.000162
+Epoch  8000/20000 | MSE Loss: 0.000120
+Epoch 10000/20000 | MSE Loss: 0.000094
+Epoch 12000/20000 | MSE Loss: 0.000078
+Epoch 14000/20000 | MSE Loss: 0.000066
+Epoch 16000/20000 | MSE Loss: 0.000057
+Epoch 18000/20000 | MSE Loss: 0.000051
+Epoch 20000/20000 | MSE Loss: 0.000045
 
 --------------------------------------------------------------------------
-Initial MSE Loss: 0.319624
-Final MSE Loss:   0.000050
+Initial MSE Loss: 0.245889
+Final MSE Loss:   0.000045
 --------------------------------------------------------------------------
 
 Final XOR Predictions vs Ground Truth Targets:
-Input: [0, 0] | Target: 0 | Prediction: 0.0067
-Input: [0, 1] | Target: 1 | Prediction: 0.9927
-Input: [1, 0] | Target: 1 | Prediction: 0.9927
-Input: [1, 1] | Target: 0 | Prediction: 0.0069
+Input: [0, 0] | Target: 0 | Prediction: 0.0072
+Input: [0, 1] | Target: 1 | Prediction: 0.9935
+Input: [1, 0] | Target: 1 | Prediction: 0.9935
+Input: [1, 1] | Target: 0 | Prediction: 0.0067
 ==========================================================================
 ```
 <!-- END_XOR_OUTPUT -->
