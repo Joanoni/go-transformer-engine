@@ -149,28 +149,28 @@ go run ./examples/xor/main.go
 ==========================================================================
 Training MLP (2-2-1) for 20000 epochs with Learning Rate = 1.00...
 
-Epoch     1/20000 | MSE Loss: 0.245889
-Epoch  2000/20000 | MSE Loss: 0.000520
-Epoch  4000/20000 | MSE Loss: 0.000249
-Epoch  6000/20000 | MSE Loss: 0.000162
-Epoch  8000/20000 | MSE Loss: 0.000120
-Epoch 10000/20000 | MSE Loss: 0.000094
-Epoch 12000/20000 | MSE Loss: 0.000078
-Epoch 14000/20000 | MSE Loss: 0.000066
-Epoch 16000/20000 | MSE Loss: 0.000057
-Epoch 18000/20000 | MSE Loss: 0.000051
-Epoch 20000/20000 | MSE Loss: 0.000045
+Epoch     1/20000 | MSE Loss: 0.284102
+Epoch  2000/20000 | MSE Loss: 0.000525
+Epoch  4000/20000 | MSE Loss: 0.000253
+Epoch  6000/20000 | MSE Loss: 0.000165
+Epoch  8000/20000 | MSE Loss: 0.000122
+Epoch 10000/20000 | MSE Loss: 0.000097
+Epoch 12000/20000 | MSE Loss: 0.000080
+Epoch 14000/20000 | MSE Loss: 0.000068
+Epoch 16000/20000 | MSE Loss: 0.000060
+Epoch 18000/20000 | MSE Loss: 0.000053
+Epoch 20000/20000 | MSE Loss: 0.000047
 
 --------------------------------------------------------------------------
-Initial MSE Loss: 0.245889
-Final MSE Loss:   0.000045
+Initial MSE Loss: 0.284102
+Final MSE Loss:   0.000047
 --------------------------------------------------------------------------
 
 Final XOR Predictions vs Ground Truth Targets:
-Input: [0, 0] | Target: 0 | Prediction: 0.0072
-Input: [0, 1] | Target: 1 | Prediction: 0.9935
-Input: [1, 0] | Target: 1 | Prediction: 0.9935
-Input: [1, 1] | Target: 0 | Prediction: 0.0067
+Input: [0, 0] | Target: 0 | Prediction: 0.0062
+Input: [0, 1] | Target: 1 | Prediction: 0.9927
+Input: [1, 0] | Target: 1 | Prediction: 0.9927
+Input: [1, 1] | Target: 0 | Prediction: 0.0065
 ==========================================================================
 ```
 <!-- END_XOR_OUTPUT -->

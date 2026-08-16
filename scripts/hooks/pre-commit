@@ -18,7 +18,7 @@ fi
 git add README.md
 
 # 4. Run unit tests
-go test -count=1 ./...
+go test -count=1 -v ./pkg/...
 if [ $? -ne 0 ]; then
     echo "Error: Unit tests failed. Aborting commit."
     exit 1
